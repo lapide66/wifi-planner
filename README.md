@@ -1,40 +1,81 @@
 # 📡 wifi-planner
 
-> Simulador visual de cobertura Wi-Fi em planta baixa — 100% offline, arquivo HTML único.
+> Simulador visual de cobertura Wi-Fi em planta baixa — 100% offline, arquivo HTML único, sem dependências.
 
 ![Version](https://img.shields.io/badge/version-1.5-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![HTML5](https://img.shields.io/badge/built%20with-HTML5%20%2F%20Vanilla%20JS-orange)
+![Offline](https://img.shields.io/badge/offline-ready-brightgreen)
+
+---
+
+## 📸 Visão Geral
+
+O **wifi-planner** permite simular a propagação de sinal Wi-Fi em uma planta baixa de forma interativa. Posicione o Access Point, edite as paredes internas, escolha os materiais e visualize instantaneamente o mapa de calor de cobertura — tudo em um único arquivo `.html`, sem instalação.
+
+**Dimensões da planta base:** 14,20 m × 30,05 m (escala 1m = 25px)
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Heatmap em tempo real** — mapa de calor recalculado instantaneamente ao mover o AP
-- **Modelo físico ITU-R P.1238** — propagação indoor validada com dados NIST IR 6055 e CWNA
-- **Ray-casting de paredes** — atenuação por tijolo, laje, porta e vidro com valores reais
-- **Dois andares** — simule térreo e 1º andar com perda de laje entre pavimentos
-- **Altura do AP e dispositivo** — componente vertical 3D no cálculo de distância
-- **Editor de paredes** — desenho por polilinha com snap a grid (0,5m) e snap a pontos existentes
-- **Undo / Redo** — histórico de 50 estados (Ctrl+Z / Ctrl+Y)
-- **Modelos de AP reais** — TP-Link, Intelbras, Ubiquiti com potências por frequência
-- **Modo Heatmap / Modo Desenho** — alterna entre visualização e edição da planta
-- **Export / Import JSON** — salva e recupera toda a planta (paredes, AP, configurações)
-- **Portável** — funciona como arquivo `.html` local, sem servidor, sem dependências
+### Heatmap
+- Mapa de calor recalculado em tempo real ao mover o AP (drag & drop)
+- Gradiente de cores suave do verde ao vermelho escuro
+- Tooltip com coordenadas (m), sinal (dBm) e classificação ao passar o mouse
+- Suporte a dois andares com perda de laje calculada pelo ITU-R P.1238
+
+### Modelo Físico
+- **ITU-R P.1238** — fórmula `L = 20·log₁₀(f) + N·log₁₀(d) − 28`
+- **Ray-casting** — traça linha reta AP→ponto e soma atenuação de cada parede interceptada
+- **Distância 3D** — inclui componente vertical entre altura do AP e altura do dispositivo
+- Expoente N e perda de laje ajustados automaticamente por frequência
+
+### Editor de Paredes
+- Modo polilinha — clique ponto a ponto para construir paredes encadeadas
+- Snap automático a extremidades de paredes existentes (raio 0,6m)
+- Snap a grid de 0,5m como fallback
+- Trava ortogonal com `Shift` (força horizontal ou vertical)
+- Label de comprimento em tempo real durante o desenho
+- Grid visual pontilhado ativado no modo desenho
+- Highlight vermelho da parede ao hover no modo apagar
+- Undo / Redo com histórico de 50 estados (`Ctrl+Z` / `Ctrl+Y`)
+
+### Configuração
+- 6 modelos de AP reais com potências por frequência (2.4 GHz / 5 GHz)
+- Seletor de frequência com atualização automática de N e potência
+- Altura do AP e altura do dispositivo configuráveis (cálculo 3D preciso)
+- Todos os parâmetros de atenuação editáveis com tooltips de referência técnica
+- Penalidade configurável para AP posicionado fora do edifício
+
+### Persistência
+- **Exportar JSON** — salva planta completa (paredes, AP, todos os parâmetros)
+- **Importar JSON** — restaura exatamente o estado salvo
+- Suporte a dois andares independentes no mesmo arquivo
+
+### Interface
+- Layout em três colunas: ferramentas | canvas | legenda
+- Abas **Modo Heatmap** / **Modo Desenho** acima do canvas
+- Abas de andar (Térreo / 1º Andar) com badge no canvas
+- Ícone do AP transparente quando em andar diferente do visualizado
+- Banner leve quando nenhum modelo de AP está selecionado
+- 100% responsivo e portável — funciona offline como arquivo local
 
 ---
 
-## 🚀 Como usar
+## 🚀 Como Usar
 
-1. Abra `wifi-heatmap.html` em qualquer navegador moderno
+1. Abra `wifi-heatmap.html` em qualquer navegador moderno (Chrome, Firefox, Edge)
 2. Selecione o **Modelo de AP** no painel esquerdo
 3. Escolha a **frequência** (5 GHz ou 2.4 GHz)
 4. Arraste o ícone 📡 para posicionar o AP na planta
-5. Passe o mouse sobre o mapa para ver o sinal em dBm em qualquer ponto
+5. Passe o mouse sobre o mapa para inspecionar o sinal em qualquer ponto
+6. Use **Modo Desenho** para editar as paredes internas
+7. Salve seu trabalho com **Exportar JSON**
 
 ---
 
-## 🏗️ Editor de Paredes
+## 🏗️ Editor de Paredes — Atalhos
 
 | Ação | Como |
 |---|---|
@@ -42,68 +83,81 @@
 | Travar eixo H/V | Segure `Shift` |
 | Confirmar segmentos | `Enter` ou duplo-clique |
 | Remover último ponto | `Backspace` |
-| Cancelar | `Esc` |
+| Cancelar desenho | `Esc` |
 | Apagar parede | Modo Apagar → clique na parede |
-| Desfazer / Refazer | `Ctrl+Z` / `Ctrl+Y` |
+| Desfazer | `Ctrl+Z` |
+| Refazer | `Ctrl+Y` |
+| Sair do modo | `Esc` |
 
-**Snap automático:**
-- 🟡 Amarelo — snap a extremidade de parede existente
-- 🟢 Verde — snap a grid de 0,5m
+**Indicadores de snap no canvas:**
+- 🟡 Círculo amarelo — snap a extremidade de parede existente
+- 🟢 Círculo verde — snap a grid de 0,5m
 
 ---
 
 ## 📐 Modelo de Propagação
 
+### Fórmula ITU-R P.1238
+
 ```
 L(dB) = 20·log₁₀(f_MHz) + N·log₁₀(d_m) − 28
-RSSI  = Potência_AP − L − Σ(Atenuação_Paredes) − Penalidade_Externa
+
+RSSI = P_tx − L − Σ(Atenuação_Paredes) − Lf(n) − Penalidade_Externa
 ```
 
-**Parâmetros ITU-R P.1238 (Tabela 1 — Escritório):**
+| Variável | Descrição |
+|---|---|
+| `f_MHz` | Frequência em MHz (2400 ou 5000) |
+| `N` | Expoente de perda de distância (Tabela 1 ITU) |
+| `d_m` | Distância 3D em metros (mín. 1m) |
+| `Lf(n)` | Perda de laje por andar cruzado (Tabela 2 ITU) |
+
+### Distância 3D
+
+```
+d = √(Δx² + Δy² + Δz²)
+
+Mesmo andar:       Δz = |h_AP − h_dispositivo|
+Andares diferentes: Δz = (n × h_andar) − h_AP + h_dispositivo
+```
+
+### Parâmetros ITU-R P.1238 — Escritório
 
 | Frequência | Expoente N | Laje (1 andar) |
 |---|---|---|
 | 2.4 GHz | 30 | 15 dB |
 | 5 GHz | 31 | 16 dB |
 
-**Atenuação de materiais (NIST IR 6055 / CWNA):**
+### Atenuação de Materiais (NIST IR 6055 / CWNA)
 
-| Material | Perda padrão |
-|---|---|
-| 🧱 Tijolo (~15cm) | 10 dB |
-| 🏗️ Laje de concreto | 15–16 dB |
-| 🚪 Porta de madeira | 4 dB |
-| 🪟 Vidro comum | 2 dB |
+| Material | Perda padrão | Referência |
+|---|---|---|
+| 🧱 Tijolo (~15cm) | 10 dB | NIST: 6–12 dB, CWNA: 12 dB |
+| 🏗️ Laje de concreto | 15–16 dB | ITU-R P.1238 Tab.2 |
+| 🚪 Porta de madeira | 4 dB | NIST: 3 dB, CWNA: 3–6 dB |
+| 🪟 Vidro comum (6mm) | 2 dB | NIST: ~1 dB, CWNA: 3 dB |
+
+### Verificação do Modelo (5 GHz, 20 dBm, N=31, sem paredes)
+
+| Distância | Perda | RSSI | Classificação |
+|---|---|---|---|
+| 1 m | 46 dB | −26 dBm | Excelente |
+| 5 m | 68 dB | −48 dBm | Excelente |
+| 10 m | 77 dB | −57 dBm | Boa |
+| 20 m | 86 dB | −66 dBm | Regular |
+| 30 m | 92 dB | −72 dBm | Ruim |
 
 ---
 
 ## 📊 Legenda de Sinal
 
-| Cor | Classificação | Faixa |
-|---|---|---|
-| 🟢 Verde escuro | Excelente | ≥ −55 dBm |
-| 🟢 Verde lima | Boa | −56 a −67 dBm |
-| 🟡 Amarelo | Regular | −68 a −75 dBm |
-| 🟠 Laranja | Ruim | −76 a −85 dBm |
-| 🔴 Vermelho | Inexistente | < −85 dBm |
-
----
-
-## 📦 Estrutura do Projeto
-
-```
-wifi-planner/
-├── wifi-heatmap.html   # Aplicação completa (arquivo único)
-├── release/
-│   ├── wifi-heatmap.html        # Última versão estável
-│   ├── wifi-heatmap-v1.0.html
-│   ├── wifi-heatmap-v1.1.html
-│   ├── wifi-heatmap-v1.2.html
-│   ├── wifi-heatmap-v1.3.html
-│   ├── wifi-heatmap-v1.4.html
-│   └── wifi-heatmap-v1.5.html
-└── README.md
-```
+| Cor | Classificação | Faixa | Uso típico |
+|---|---|---|---|
+| 🟢 Verde escuro | Excelente | ≥ −55 dBm | Junto ao AP, máximo throughput |
+| 🟢 Verde lima | Boa | −56 a −67 dBm | Alvo enterprise (mín. −67 dBm) |
+| 🟡 Amarelo | Regular | −68 a −75 dBm | Web e e-mail básico |
+| 🟠 Laranja | Ruim | −76 a −85 dBm | Conexão instável |
+| 🔴 Vermelho | Inexistente | < −85 dBm | Inutilizável |
 
 ---
 
@@ -120,12 +174,60 @@ wifi-planner/
 
 ---
 
+## 💾 Formato do Arquivo de Exportação (JSON)
+
+```json
+{
+  "version": "1.5",
+  "apX": 177.5,
+  "apY": 250.3,
+  "apFloor": 0,
+  "currentModel": "ubiquiti_u7",
+  "currentFreq": "5",
+  "apPower": 26,
+  "apHeight": 2.8,
+  "devHeight": 1.0,
+  "pathLoss": 31,
+  "extPenalty": 12,
+  "lossWall": 10,
+  "lossSlab": 16,
+  "lossDoor": 4,
+  "lossGlass": 2,
+  "internalWalls": [
+    { "x1": 0, "y1": 10, "x2": 14.2, "y2": 10, "type": "brick", "floor": 0, "internal": true }
+  ]
+}
+```
+
+---
+
+## 📦 Estrutura do Projeto
+
+```
+wifi-planner/
+├── wifi-heatmap.html   # Aplicação completa (arquivo único)
+├── .gitignore
+└── README.md
+
+# Local apenas (não versionado):
+release/
+├── wifi-heatmap.html        # Última versão estável
+├── wifi-heatmap-v1.0.html   # Heatmap básico
+├── wifi-heatmap-v1.1.html   # Modelo ITU-R P.1238 corrigido
+├── wifi-heatmap-v1.2.html   # Modelo "Selecionar", layout 3 colunas
+├── wifi-heatmap-v1.3.html   # Editor polilinha, snap, undo/redo
+├── wifi-heatmap-v1.4.html   # Modo Heatmap/Desenho, export/import
+└── wifi-heatmap-v1.5.html   # Altura AP + dispositivo (3D)
+```
+
+---
+
 ## 📋 Referências Técnicas
 
-- **ITU-R P.1238** — *Propagation data and prediction methods for indoor radio communication systems*, Geneva 2012
+- **ITU-R P.1238-7** — *Propagation data and prediction methods for the planning of indoor radiocommunication systems*, Geneva 2012
 - **NIST IR 6055** — *Electromagnetic Signal Attenuation in Construction Materials*, Stone W., 1997
-- **CWNA Official Study Guide** — RF attenuation values for building materials
-- **AccessAgility** — Wi-Fi signal strength thresholds for enterprise design
+- **CWNA Official Study Guide** — RF attenuation values for building materials at 2.4 GHz
+- **AccessAgility** — *Wi-Fi Signal Strength Explained: What the Numbers Actually Mean*
 
 ---
 
