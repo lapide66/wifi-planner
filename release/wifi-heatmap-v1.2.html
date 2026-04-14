@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wi-Fi Heatmap - Planta Baixa</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#1a1a2e; color:#e0e0e0;
+  font-family:'Segoe UI',sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  min-height:100vh; padding:12px;
+}
+h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
+
+/* ── Main layout: legend | canvas | tools ── */
+#app {
+  display:flex; gap:12px; align-items:flex-start;
+  flex-wrap:wrap; justify-content:center;
+}
+
+/* ── Canvas ── */
+#canvas-container {
+  position:relative; border:2px solid #00d4ff44; border-radius:6px;
+  overflow:visible; background:#111; flex-shrink:0;
+}
+#heatmapCanvas { display:block; cursor:crosshair; }
+#apIcon {
+  position:absolute; width:28px; height:28px;
+  transform:translate(-50%,-50%); cursor:grab; z-index:10;
+  pointer-events:all; filter:drop-shadow(0 0 6px #00d4ff); user-select:none;
+}
+#apIcon:active { cursor:grabbing; }
+#floorBadge {
+  position:absolute; top:6px; right:8px; background:#00d4ffcc;
+  color:#000; font-size:0.7rem; font-weight:bold; padding:2px 7px;
+  border-radius:10px; pointer-events:none; z-index:5;
+}
+
+/* ── No-AP overlay ── */
+#noApOverlay {
+  position:absolute; inset:0; background:rgba(10,10,30,0.82);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border-radius:4px; z-index:20; pointer-events:none;
+}
+#noApOverlay .msg {
+  color:#00d4ff; font-size:1rem; font-weight:bold; text-align:center;
+  text-shadow:0 0 12px #00d4ff88; padding:0 20px;
+}
+#noApOverlay .sub {
+  color:#aaa; font-size:0.78rem; margin-top:8px; text-align:center;
+}
+
+/* ── Tooltip ── */
+#tooltip {
+  position:fixed; background:rgba(0,0,0,0.92); border:1px solid #00d4ff66;
+  border-radius:6px; padding:8px 12px; font-size:0.78rem;
+  pointer-events:none; display:none; z-index:200; line-height:1.7; min-width:175px;
+}
+.sig-excellent{color:#00cc00} .sig-good{color:#7fff00}
+.sig-fair{color:#ffff00} .sig-poor{color:#ff8c00} .sig-none{color:#cc3333}
+
+/* ── Shared panel style ── */
+.side-panel {
+  background:#16213e; border:1px solid #00d4ff33; border-radius:8px;
+  padding:12px; font-size:0.8rem; flex-shrink:0;
+  max-height:92vh; overflow-y:auto;
+}
+.side-panel h2 { font-size:0.88rem; color:#00d4ff; margin-bottom:8px; border-bottom:1px solid #00d4ff33; padding-bottom:5px; }
+.side-panel h3 { font-size:0.72rem; color:#aaa; margin:10px 0 5px; text-transform:uppercase; letter-spacing:0.5px; }
+
+/* ── Left panel (legend) ── */
+#panelLeft { width:190px; }
+
+/* ── Right panel (tools) ── */
+#panelRight { width:262px; }
+
+.param-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; gap:6px; }
+.param-row label { color:#ccc; flex:1; min-width:0; font-size:0.78rem; }
+.param-row input[type=number] {
+  width:62px; background:#0f3460; border:1px solid #00d4ff44; color:#fff;
+  border-radius:4px; padding:2px 5px; font-size:0.78rem; text-align:right; flex-shrink:0;
+}
+.param-row select {
+  background:#0f3460; border:1px solid #00d4ff44; color:#fff;
+  border-radius:4px; padding:2px 4px; font-size:0.78rem; flex-shrink:0;
+}
+.full-select {
+  width:100%; margin-bottom:5px; background:#0f3460; border:1px solid #00d4ff44;
+  color:#fff; border-radius:4px; padding:4px 5px; font-size:0.78rem;
+}
+.full-select.highlight { border-color:#00d4ff; background:#0a2a50; }
+
+/* AP info box */
+#apInfoBox {
+  background:#0a2040; border:1px solid #00d4ff33; border-radius:5px;
+  padding:6px 8px; margin-bottom:6px; font-size:0.74rem; line-height:1.7; display:none;
+}
+#apInfoBox span { color:#00d4ff; font-weight:bold; }
+
+/* Freq tabs */
+#freqTabs { display:flex; gap:5px; margin-bottom:6px; }
+.freq-tab {
+  flex:1; padding:4px; background:#0f3460; border:1px solid #00d4ff44;
+  color:#aaa; border-radius:4px; cursor:pointer; font-size:0.75rem; text-align:center;
+}
+.freq-tab.active { background:#00d4ff22; border-color:#00d4ff; color:#00d4ff; font-weight:bold; }
+
+/* Floor tabs */
+#floorTabs { display:flex; gap:6px; margin-bottom:8px; }
+.floor-tab {
+  flex:1; padding:5px; background:#0f3460; border:1px solid #00d4ff44;
+  color:#aaa; border-radius:4px; cursor:pointer; font-size:0.77rem; text-align:center;
+}
+.floor-tab.active { background:#00d4ff22; border-color:#00d4ff; color:#00d4ff; font-weight:bold; }
+
+/* Wall editor */
+.wall-material-btn {
+  display:inline-block; padding:3px 7px; margin:2px; border-radius:4px;
+  cursor:pointer; font-size:0.7rem; border:2px solid transparent; user-select:none;
+}
+.wall-material-btn.selected { border-color:#fff; }
+.mat-brick { background:#7a5c3a; color:#fff; }
+.mat-slab  { background:#666; color:#fff; }
+.mat-door  { background:#c8a060; color:#000; }
+.mat-glass { background:#88ccff; color:#000; }
+
+.editor-btn {
+  width:100%; padding:5px; margin-top:4px; background:#0f3460;
+  border:1px solid #00d4ff44; color:#ccc; border-radius:4px;
+  cursor:pointer; font-size:0.77rem;
+}
+.editor-btn:hover { background:#1a4a80; color:#fff; }
+.editor-btn.active { background:#00d4ff22; border-color:#00d4ff; color:#00d4ff; }
+.editor-btn.danger { border-color:#ff444444; color:#ff8888; }
+.editor-btn.danger:hover { background:#4a0000; color:#ff4444; }
+
+#wallList { max-height:120px; overflow-y:auto; margin-top:6px; border:1px solid #00d4ff22; border-radius:4px; }
+.wall-item {
+  display:flex; align-items:center; gap:4px; padding:3px 6px;
+  font-size:0.7rem; border-bottom:1px solid #ffffff11; cursor:pointer;
+}
+.wall-item:hover { background:#ffffff11; }
+.wall-item.selected-wall { background:#00d4ff22; }
+.wall-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.wall-del { margin-left:auto; color:#ff6666; cursor:pointer; padding:0 4px; font-size:0.9rem; }
+.wall-del:hover { color:#ff0000; }
+
+/* Legend */
+.legend-item { display:flex; align-items:center; gap:7px; margin-bottom:4px; font-size:0.76rem; }
+.legend-color { width:16px; height:16px; border-radius:3px; flex-shrink:0; }
+.legend-gradient {
+  width:100%; height:14px; border-radius:3px; margin-bottom:6px;
+  background: linear-gradient(to right, #009600, #32CD32, #FFFF00, #FF8C00, #cc0000, #4a0000);
+}
+
+#ap-pos { margin-top:8px; border-top:1px solid #00d4ff22; padding-top:6px; font-size:0.73rem; color:#aaa; }
+#ap-pos span { color:#00d4ff; font-weight:bold; }
+</style>
+</head>
+<body>
+<h1>📡 Wi-Fi Signal Heatmap — Planta Baixa</h1>
+<div id="app">
+
+  <!-- ══ LEFT: Legend ══ -->
+  <div class="side-panel" id="panelLeft">
+    <h2>📊 Legenda</h2>
+
+    <div class="legend-gradient"></div>
+    <div class="legend-item"><div class="legend-color" style="background:#009600"></div><span>Excelente (≥ −55 dBm)</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#32CD32"></div><span>Boa (−56 a −67 dBm)</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#FFFF00"></div><span>Regular (−68 a −75 dBm)</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#FF8C00"></div><span>Ruim (−76 a −85 dBm)</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#8B0000"></div><span>Inexistente (&lt; −85 dBm)</span></div>
+
+    <h3>Paredes</h3>
+    <div class="legend-item">
+      <div style="width:22px;height:3px;background:#888;border-radius:1px;flex-shrink:0"></div>
+      <span>Tijolo / Alvenaria</span>
+    </div>
+    <div class="legend-item">
+      <div style="width:22px;height:4px;background:#aaa;border-radius:1px;flex-shrink:0"></div>
+      <span>Laje / Concreto</span>
+    </div>
+    <div class="legend-item">
+      <div style="width:22px;height:2px;background:#c8a060;border-radius:1px;flex-shrink:0"></div>
+      <span>Porta de Madeira</span>
+    </div>
+    <div class="legend-item">
+      <div style="width:22px;height:2px;background:#88ccff;border-radius:1px;flex-shrink:0"></div>
+      <span>Vidro Comum</span>
+    </div>
+
+    <h3>Modelo</h3>
+    <div style="font-size:0.7rem;color:#666;line-height:1.6;">
+      ITU-R P.1238<br>
+      L = 20·log₁₀(f) +<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;N·log₁₀(d) − 28<br>
+      <span style="color:#555">Fonte: NIST IR 6055<br>CWNA Study Guide</span>
+    </div>
+
+    <div id="ap-pos">AP: <span id="apPosText">—</span></div>
+  </div>
+
+  <!-- ══ CENTER: Canvas ══ -->
+  <div id="canvas-container">
+    <canvas id="heatmapCanvas"></canvas>
+    <div id="floorBadge">Térreo</div>
+    <div id="noApOverlay">
+      <div class="msg">📡 Selecione um Modelo de AP</div>
+      <div class="sub">Escolha o equipamento no painel<br>de configurações →</div>
+    </div>
+    <svg id="apIcon" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="13" fill="#0f3460" stroke="#00d4ff" stroke-width="1.5"/>
+      <path d="M7 18 Q14 10 21 18" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+      <path d="M9.5 20.5 Q14 14 18.5 20.5" fill="none" stroke="#00aaff" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="14" cy="22" r="2" fill="#00d4ff"/>
+    </svg>
+  </div>
+
+  <!-- ══ RIGHT: Tools ══ -->
+  <div class="side-panel" id="panelRight">
+    <h2>⚙️ Configurações</h2>
+
+    <h3>Andar Visualizado</h3>
+    <div id="floorTabs">
+      <div class="floor-tab active" data-floor="0" onclick="setFloor(0)">🏠 Térreo</div>
+      <div class="floor-tab" data-floor="1" onclick="setFloor(1)">🏢 1º Andar</div>
+    </div>
+
+    <h3>Configuração do AP</h3>
+    <div style="margin-bottom:4px;font-size:0.72rem;color:#aaa;">Modelo AP:</div>
+    <select class="full-select highlight" id="apModelSelect" onchange="onModelChange()">
+      <option value="select">— Selecionar —</option>
+      <option value="tplink_ex141">TP-Link EX141</option>
+      <option value="tplink_eap610">TP-Link EAP610-Outdoor</option>
+      <option value="intelbras_3000">Intelbras AP 3000 AX Outdoor</option>
+      <option value="intelbras_1250">Intelbras AP 1250 AC Outdoor</option>
+      <option value="ubiquiti_u7">Ubiquiti UniFi U7-Outdoor</option>
+      <option value="ubiquiti_acpro">Ubiquiti UniFi AC Pro</option>
+    </select>
+
+    <div id="apInfoBox"></div>
+
+    <div style="margin-bottom:4px;font-size:0.72rem;color:#aaa;">Frequência:</div>
+    <div id="freqTabs">
+      <div class="freq-tab active" data-freq="5" onclick="setFreq('5')">📶 5 GHz</div>
+      <div class="freq-tab" data-freq="2.4" onclick="setFreq('2.4')">📡 2.4 GHz</div>
+    </div>
+
+    <div class="param-row">
+      <label>Potência (dBm)</label>
+      <input type="number" id="apPower" value="20" min="0" max="36" step="1" oninput="onPowerManualEdit()">
+    </div>
+    <div class="param-row">
+      <label>Andar do AP</label>
+      <select id="apFloorSelect" onchange="apFloor=parseInt(this.value);scheduleRender()">
+        <option value="0">Térreo</option>
+        <option value="1">1º Andar</option>
+      </select>
+    </div>
+
+    <h3>Propagação (ITU-R P.1238)</h3>
+    <div class="param-row">
+      <label title="ITU-R P.1238 Tab.1 — Escritório: 2.4GHz=30, 5GHz=31 | Residencial: 2.4GHz=28 | Corredor: ~33">Expoente N <span style="color:#555;font-size:0.67rem">(Tab.1)</span></label>
+      <input type="number" id="pathLoss" value="31" min="15" max="50" step="1">
+    </div>
+    <div class="param-row">
+      <label title="Perda extra quando AP está fora do edifício. Típico: 10–15 dB.">Penalidade externa <span style="color:#555;font-size:0.67rem">(dB)</span></label>
+      <input type="number" id="extPenalty" value="12" min="0" max="30" step="1">
+    </div>
+
+    <h3>Atenuação de Materiais</h3>
+    <div style="font-size:0.67rem;color:#555;margin-bottom:5px;">NIST IR 6055 / CWNA — médias 2.4/5 GHz</div>
+    <div class="param-row">
+      <label title="Tijolo ~15cm: 6–12 dB (2.4G) / 15–18 dB (5G). NIST IR 6055, CWNA.">🧱 Tijolo (dB)</label>
+      <input type="number" id="lossWall" value="10" min="0" max="30" step="1">
+    </div>
+    <div class="param-row">
+      <label title="ITU-R P.1238 Tab.2: 15 dB (2.4G) / 16 dB (5G) por andar. Concreto 102mm: 15–22 dB (NIST).">🏗️ Laje Concreto (dB)</label>
+      <input type="number" id="lossSlab" value="16" min="0" max="40" step="1">
+    </div>
+    <div class="param-row">
+      <label title="Madeira maciça 38mm: 3 dB (NIST). CWNA: 3–6 dB.">🚪 Porta Madeira (dB)</label>
+      <input type="number" id="lossDoor" value="4" min="0" max="20" step="1">
+    </div>
+    <div class="param-row">
+      <label title="Vidro 6mm: ~1 dB (NIST IR 6055). CWNA não-tintado: 3 dB.">🪟 Vidro Comum (dB)</label>
+      <input type="number" id="lossGlass" value="2" min="0" max="20" step="1">
+    </div>
+
+    <h3>✏️ Editor de Paredes</h3>
+    <div style="margin-bottom:4px;font-size:0.71rem;color:#aaa;">Material:</div>
+    <div id="matButtons">
+      <span class="wall-material-btn mat-brick selected" data-mat="brick" onclick="selectMat('brick')">🧱 Tijolo</span>
+      <span class="wall-material-btn mat-slab"  data-mat="slab"  onclick="selectMat('slab')">🏗️ Laje</span>
+      <span class="wall-material-btn mat-door"  data-mat="door"  onclick="selectMat('door')">🚪 Porta</span>
+      <span class="wall-material-btn mat-glass" data-mat="glass" onclick="selectMat('glass')">🪟 Vidro</span>
+    </div>
+    <button class="editor-btn" id="btnDraw"  onclick="setEditorMode('draw')">✏️ Desenhar Parede</button>
+    <button class="editor-btn danger" id="btnErase" onclick="setEditorMode('erase')">🗑️ Apagar (clique na parede)</button>
+    <button class="editor-btn" onclick="setEditorMode('none')">🖱️ Modo Normal</button>
+    <button class="editor-btn danger" onclick="clearInternalWalls()">⚠️ Limpar Paredes do Andar</button>
+    <div id="wallList"></div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+const SCALE = 25, W_M = 14.20, H_M = 30.05;
+const CW = Math.round(W_M * SCALE); // 355
+const CH = Math.round(H_M * SCALE); // 751
+const GRID = 5;
+const FLOOR_HEIGHT_M = 2.0;
+
+// ── AP Models ─────────────────────────────────────────────────
+const AP_MODELS = {
+  select:          { name:null,                                p24: null, p5: null },
+  tplink_ex141:    { name:'TP-Link EX141',                     p24: 20,   p5: 23  },
+  tplink_eap610:   { name:'TP-Link EAP610-Outdoor',            p24: 25,   p5: 25  },
+  intelbras_3000:  { name:'Intelbras AP 3000 AX Outdoor',      p24: 23,   p5: 22  },
+  intelbras_1250:  { name:'Intelbras AP 1250 AC Outdoor',      p24: 26,   p5: 26  },
+  ubiquiti_u7:     { name:'Ubiquiti UniFi U7-Outdoor',         p24: 23,   p5: 26  },
+  ubiquiti_acpro:  { name:'Ubiquiti UniFi AC Pro',             p24: 22,   p5: 22  },
+};
+
+// ITU-R P.1238 Table 1 — N (office)
+const ITU_N    = { '5': 31, '2.4': 30 };
+// ITU-R P.1238 Table 2 — floor penetration loss (office, 1 floor)
+const ITU_SLAB = { '5': 16, '2.4': 15 };
+
+// ── Canvas ────────────────────────────────────────────────────
+const canvas = document.getElementById('heatmapCanvas');
+canvas.width = CW; canvas.height = CH;
+const ctx = canvas.getContext('2d');
+
+// ── State ─────────────────────────────────────────────────────
+let apX = CW/2, apY = CH/3;
+let currentFloor = 0, apFloor = 0;
+let currentFreq = '5';
+let currentModel = 'select';
+let powerManualOverride = false;
+let editorMode = 'none';
+let drawMaterial = 'brick';
+let drawStart = null, previewEnd = null;
+let selectedWallIdx = -1;
+
+function isModelSelected() { return currentModel !== 'select'; }
+
+// ── Coords ────────────────────────────────────────────────────
+function canvasToWorld(cx,cy){ return {x:cx/SCALE, y:(CH-cy)/SCALE}; }
+function worldToCanvas(wx,wy){ return {x:wx*SCALE, y:CH-wy*SCALE}; }
+
+// ── Walls ─────────────────────────────────────────────────────
+const MAT_COLORS = {brick:'#888',slab:'#aaa',door:'#c8a060',glass:'#88ccff'};
+const MAT_WIDTH  = {brick:3,slab:4,door:2,glass:2};
+const MAT_DOT    = {brick:'#7a5c3a',slab:'#666',door:'#c8a060',glass:'#88ccff'};
+
+function makeOuterWalls(floor){
+  return [
+    {x1:0,  y1:0,  x2:W_M,y2:0,  type:'brick',floor,internal:false},
+    {x1:0,  y1:H_M,x2:W_M,y2:H_M,type:'brick',floor,internal:false},
+    {x1:0,  y1:0,  x2:0,  y2:H_M,type:'brick',floor,internal:false},
+    {x1:W_M,y1:0,  x2:W_M,y2:H_M,type:'brick',floor,internal:false},
+  ];
+}
+
+const BASE_INTERNAL = [
+  {x1:0,   y1:10.0,x2:W_M, y2:10.0,type:'brick'},
+  {x1:0,   y1:20.0,x2:W_M, y2:20.0,type:'brick'},
+  {x1:7.10,y1:0,   x2:7.10,y2:10.0,type:'brick'},
+  {x1:4.73,y1:10.0,x2:4.73,y2:20.0,type:'brick'},
+  {x1:9.47,y1:10.0,x2:9.47,y2:20.0,type:'brick'},
+  {x1:7.10,y1:20.0,x2:7.10,y2:H_M, type:'brick'},
+  {x1:6.60,y1:10.0,x2:7.60,y2:10.0,type:'door'},
+  {x1:6.60,y1:20.0,x2:7.60,y2:20.0,type:'door'},
+  {x1:7.10,y1:4.5, x2:7.10,y2:5.5, type:'door'},
+  {x1:4.73,y1:14.5,x2:4.73,y2:15.5,type:'door'},
+  {x1:9.47,y1:14.5,x2:9.47,y2:15.5,type:'door'},
+  {x1:2.0, y1:22.0,x2:5.0, y2:22.0,type:'glass'},
+  {x1:9.0, y1:22.0,x2:12.0,y2:22.0,type:'glass'},
+];
+
+let internalWalls = [
+  ...BASE_INTERNAL.map(w=>({...w,floor:0,internal:true})),
+  ...BASE_INTERNAL.map(w=>({...w,floor:1,internal:true})),
+];
+
+function getWallsForFloor(floor){
+  return [...makeOuterWalls(floor), ...internalWalls.filter(w=>w.floor===floor)];
+}
+function getWallLoss(type){
+  return {
+    brick:+document.getElementById('lossWall').value||10,
+    slab: +document.getElementById('lossSlab').value||16,
+    door: +document.getElementById('lossDoor').value||4,
+    glass:+document.getElementById('lossGlass').value||2,
+  }[type]||0;
+}
+
+// ── Geometry ──────────────────────────────────────────────────
+function segmentsIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
+  const dx1=ax2-ax1,dy1=ay2-ay1,dx2=bx2-bx1,dy2=by2-by1;
+  const d=dx1*dy2-dy1*dx2;
+  if(Math.abs(d)<1e-10)return false;
+  const t=((bx1-ax1)*dy2-(by1-ay1)*dx2)/d;
+  const u=((bx1-ax1)*dy1-(by1-ay1)*dx1)/d;
+  return t>0.01&&t<0.99&&u>0.01&&u<0.99;
+}
+function pointNearSeg(px,py,x1,y1,x2,y2,th){
+  const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;
+  if(l2<1e-10)return Math.hypot(px-x1,py-y1)<th;
+  const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));
+  return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))<th;
+}
+function isInsideBuilding(wx,wy){return wx>=0&&wx<=W_M&&wy>=0&&wy<=H_M;}
+
+// ── Signal model ──────────────────────────────────────────────
+function wallAtten(apWx,apWy,ptWx,ptWy,walls){
+  let t=0;
+  for(const w of walls)
+    if(segmentsIntersect(apWx,apWy,ptWx,ptWy,w.x1,w.y1,w.x2,w.y2))
+      t+=getWallLoss(w.type);
+  return t;
+}
+
+// ITU-R P.1238: L = 20·log10(f_MHz) + N·log10(d_m) − 28
+function freqMHz(){ return currentFreq==='5'?5000:2400; }
+
+function calcRSSI(apWx,apWy,ptWx,ptWy,viewFloor){
+  const power    = +document.getElementById('apPower').value   ||20;
+  const N        = +document.getElementById('pathLoss').value  ||31;
+  const extPen   = +document.getElementById('extPenalty').value||12;
+  const slabLoss = +document.getElementById('lossSlab').value  ||16;
+
+  const floorDiff = Math.abs(apFloor-viewFloor);
+  const vertDist  = floorDiff*FLOOR_HEIGHT_M;
+  const dx=ptWx-apWx, dy=ptWy-apWy;
+  const d = Math.max(Math.sqrt(dx*dx+dy*dy+vertDist*vertDist), 1.0);
+
+  const distLoss = 20*Math.log10(freqMHz()) + N*Math.log10(d) - 28;
+
+  let wallLoss = wallAtten(apWx,apWy,ptWx,ptWy,getWallsForFloor(apFloor));
+  if(floorDiff>0){
+    wallLoss += floorDiff*slabLoss;
+    wallLoss += wallAtten(apWx,apWy,ptWx,ptWy,getWallsForFloor(viewFloor));
+  }
+
+  const penalty = isInsideBuilding(apWx,apWy)?0:extPen;
+  return power - distLoss - wallLoss - penalty;
+}
+
+// ── Color mapping ─────────────────────────────────────────────
+function rssiToRGBA(rssi){
+  if(rssi>=-40) return [0,160,0,240];
+  if(rssi>=-55){const t=(rssi+55)/15; return [0,Math.round(130+30*t),0,235];}
+  if(rssi>=-65){const t=(rssi+65)/10; return [Math.round(220*(1-t)),Math.round(160+40*t),0,225];}
+  if(rssi>=-75){const t=(rssi+75)/10; return [255,Math.round(200*t),0,215];}
+  if(rssi>=-85){const t=(rssi+85)/10; return [255,Math.round(80*t),0,200];}
+  if(rssi>=-95){const t=(rssi+95)/10; return [Math.round(60+80*t),0,0,Math.round(60+120*t)];}
+  return [50,0,0,40];
+}
+function classifySignal(rssi){
+  if(rssi>=-55) return {label:'Excelente',cls:'sig-excellent'};
+  if(rssi>=-67) return {label:'Boa',      cls:'sig-good'};
+  if(rssi>=-75) return {label:'Regular',  cls:'sig-fair'};
+  if(rssi>=-85) return {label:'Ruim',     cls:'sig-poor'};
+  return              {label:'Inexistente',cls:'sig-none'};
+}
+
+// ── Render ────────────────────────────────────────────────────
+let renderScheduled=false;
+function scheduleRender(){
+  if(!renderScheduled){renderScheduled=true;requestAnimationFrame(render);}
+}
+
+function render(){
+  renderScheduled=false;
+  const apWorld=canvasToWorld(apX,apY);
+
+  // Heatmap — only when a model is selected
+  const imgData=ctx.createImageData(CW,CH);
+  const data=imgData.data;
+
+  if(isModelSelected()){
+    for(let py=0;py<CH;py+=GRID){
+      for(let px=0;px<CW;px+=GRID){
+        const w=canvasToWorld(px+GRID/2,py+GRID/2);
+        const rssi=calcRSSI(apWorld.x,apWorld.y,w.x,w.y,currentFloor);
+        const [r,g,b,a]=rssiToRGBA(rssi);
+        for(let dy=0;dy<GRID&&py+dy<CH;dy++){
+          for(let dx=0;dx<GRID&&px+dx<CW;dx++){
+            const i=((py+dy)*CW+(px+dx))*4;
+            data[i]=r;data[i+1]=g;data[i+2]=b;data[i+3]=a;
+          }
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+
+  drawFloorPlan();
+  drawScaleBar();
+  drawDrawingPreview();
+
+  // AP icon visibility
+  const icon=document.getElementById('apIcon');
+  icon.style.left=apX+'px'; icon.style.top=apY+'px';
+  icon.style.opacity=(apFloor===currentFloor)?'1':'0.3';
+  icon.style.display=isModelSelected()?'block':'none';
+
+  // Overlay
+  document.getElementById('noApOverlay').style.display=isModelSelected()?'none':'flex';
+
+  document.getElementById('apPosText').textContent=
+    isModelSelected()
+      ? `X:${apWorld.x.toFixed(2)}m Y:${apWorld.y.toFixed(2)}m | ${apFloor===0?'Térreo':'1º Andar'}`
+      : '—';
+  document.getElementById('floorBadge').textContent=currentFloor===0?'Térreo':'1º Andar';
+
+  updateWallList();
+}
+
+function drawFloorPlan(){
+  ctx.save();
+  for(const w of getWallsForFloor(currentFloor)){
+    const c1=worldToCanvas(w.x1,w.y1),c2=worldToCanvas(w.x2,w.y2);
+    ctx.strokeStyle=MAT_COLORS[w.type]||'#888';
+    ctx.lineWidth=MAT_WIDTH[w.type]||2;
+    if(w.internal){
+      const gi=internalWalls.indexOf(w);
+      if(gi===selectedWallIdx){ctx.strokeStyle='#ffff00';ctx.lineWidth+=2;}
+    }
+    ctx.beginPath();ctx.moveTo(c1.x,c1.y);ctx.lineTo(c2.x,c2.y);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawScaleBar(){
+  ctx.save();
+  const bpx=5*SCALE,x=10,y=CH-14;
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(x-2,y-13,bpx+4,18);
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(x,y);ctx.lineTo(x+bpx,y);
+  ctx.moveTo(x,y-6);ctx.lineTo(x,y+2);
+  ctx.moveTo(x+bpx,y-6);ctx.lineTo(x+bpx,y+2);
+  ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='10px Segoe UI';
+  ctx.fillText('5 m',x+bpx/2-10,y-2);
+  ctx.restore();
+}
+
+function drawDrawingPreview(){
+  if(editorMode!=='draw'||!drawStart||!previewEnd)return;
+  const c1=worldToCanvas(drawStart.x,drawStart.y);
+  const c2=worldToCanvas(previewEnd.x,previewEnd.y);
+  ctx.save();ctx.setLineDash([5,4]);
+  ctx.strokeStyle=MAT_COLORS[drawMaterial]||'#fff';
+  ctx.lineWidth=MAT_WIDTH[drawMaterial]||2;
+  ctx.beginPath();ctx.moveTo(c1.x,c1.y);ctx.lineTo(c2.x,c2.y);ctx.stroke();
+  ctx.restore();
+}
+
+// ── AP Model & Frequency ──────────────────────────────────────
+function onModelChange(){
+  currentModel=document.getElementById('apModelSelect').value;
+  powerManualOverride=false;
+  // Remove highlight once a real model is chosen
+  const sel=document.getElementById('apModelSelect');
+  sel.classList.toggle('highlight', currentModel==='select');
+  applyModelPower();
+  updateApInfoBox();
+  scheduleRender();
+}
+
+function setFreq(f){
+  currentFreq=f;
+  document.querySelectorAll('.freq-tab').forEach(t=>t.classList.toggle('active',t.dataset.freq===f));
+  powerManualOverride=false;
+  applyModelPower();
+  const nEl=document.getElementById('pathLoss');
+  const sEl=document.getElementById('lossSlab');
+  if(nEl.dataset.manual!=='true') nEl.value=ITU_N[f];
+  if(sEl.dataset.manual!=='true') sEl.value=ITU_SLAB[f];
+  scheduleRender();
+}
+
+function applyModelPower(){
+  if(powerManualOverride)return;
+  const m=AP_MODELS[currentModel];
+  if(!m||m.p24===null)return;
+  document.getElementById('apPower').value=currentFreq==='5'?m.p5:m.p24;
+}
+
+function onPowerManualEdit(){powerManualOverride=true;scheduleRender();}
+
+function updateApInfoBox(){
+  const box=document.getElementById('apInfoBox');
+  const m=AP_MODELS[currentModel];
+  if(!m||!m.name){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML=`<b style="color:#00d4ff">${m.name}</b><br>`+
+    `2.4 GHz: <span>${m.p24} dBm</span> &nbsp;|&nbsp; 5 GHz: <span>${m.p5} dBm</span>`;
+}
+
+// ── Floor ─────────────────────────────────────────────────────
+function setFloor(f){
+  currentFloor=f;
+  document.querySelectorAll('.floor-tab').forEach(t=>t.classList.toggle('active',parseInt(t.dataset.floor)===f));
+  scheduleRender();
+}
+
+// ── Wall editor ───────────────────────────────────────────────
+function selectMat(mat){
+  drawMaterial=mat;
+  document.querySelectorAll('.wall-material-btn').forEach(b=>b.classList.toggle('selected',b.dataset.mat===mat));
+}
+function setEditorMode(mode){
+  editorMode=mode;drawStart=null;previewEnd=null;
+  document.getElementById('btnDraw').classList.toggle('active',mode==='draw');
+  document.getElementById('btnErase').classList.toggle('active',mode==='erase');
+  canvas.style.cursor=mode==='erase'?'cell':'crosshair';
+  scheduleRender();
+}
+function clearInternalWalls(){
+  if(!confirm('Apagar todas as paredes internas do andar atual?'))return;
+  internalWalls=internalWalls.filter(w=>w.floor!==currentFloor);
+  selectedWallIdx=-1;scheduleRender();
+}
+function deleteWall(idx){
+  internalWalls.splice(idx,1);
+  if(selectedWallIdx>=internalWalls.length)selectedWallIdx=-1;
+  scheduleRender();
+}
+function selectWall(idx){selectedWallIdx=(selectedWallIdx===idx)?-1:idx;scheduleRender();}
+function snapToGrid(v){return Math.round(v*2)/2;}
+
+function updateWallList(){
+  const list=document.getElementById('wallList');
+  const fw=internalWalls.map((w,i)=>({w,i})).filter(({w})=>w.floor===currentFloor);
+  if(!fw.length){list.innerHTML='<div style="padding:6px;color:#555;font-size:0.7rem;">Nenhuma parede interna</div>';return;}
+  list.innerHTML=fw.map(({w,i})=>
+    `<div class="wall-item${i===selectedWallIdx?' selected-wall':''}" onclick="selectWall(${i})">
+      <div class="wall-dot" style="background:${MAT_DOT[w.type]}"></div>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${w.type} (${w.x1.toFixed(1)},${w.y1.toFixed(1)})→(${w.x2.toFixed(1)},${w.y2.toFixed(1)})</span>
+      <span class="wall-del" onclick="event.stopPropagation();deleteWall(${i})">✕</span>
+    </div>`
+  ).join('');
+}
+
+// ── Canvas events ─────────────────────────────────────────────
+canvas.addEventListener('mousedown',e=>{
+  if(dragging)return;
+  const rect=canvas.getBoundingClientRect();
+  const w=canvasToWorld(e.clientX-rect.left,e.clientY-rect.top);
+  if(editorMode==='draw'){drawStart={x:snapToGrid(w.x),y:snapToGrid(w.y)};e.preventDefault();}
+  else if(editorMode==='erase'){
+    let best=-1,bestD=0.5;
+    internalWalls.forEach((wall,i)=>{
+      if(wall.floor!==currentFloor)return;
+      if(pointNearSeg(w.x,w.y,wall.x1,wall.y1,wall.x2,wall.y2,bestD)){best=i;bestD=0.25;}
+    });
+    if(best>=0)deleteWall(best);
+    e.preventDefault();
+  }
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(dragging)return;
+  const rect=canvas.getBoundingClientRect();
+  const w=canvasToWorld(e.clientX-rect.left,e.clientY-rect.top);
+  if(editorMode==='draw'&&drawStart){previewEnd={x:snapToGrid(w.x),y:snapToGrid(w.y)};scheduleRender();return;}
+  if(editorMode==='none'&&isModelSelected()){
+    const apW=canvasToWorld(apX,apY);
+    const rssi=calcRSSI(apW.x,apW.y,w.x,w.y,currentFloor);
+    const cls=classifySignal(rssi);
+    const tt=document.getElementById('tooltip');
+    tt.innerHTML=
+      `<div>📍 X:<b>${w.x.toFixed(2)}m</b> Y:<b>${w.y.toFixed(2)}m</b></div>`+
+      `<div>📶 <b>${rssi.toFixed(1)} dBm</b> (${currentFreq==='5'?'5 GHz':'2.4 GHz'})</div>`+
+      `<div class="${cls.cls}">● ${cls.label}</div>`+
+      `<div style="color:#555;font-size:0.7rem">${currentFloor===0?'Térreo':'1º Andar'}</div>`;
+    tt.style.display='block';
+    tt.style.left=(e.clientX+14)+'px';
+    tt.style.top=(e.clientY-10)+'px';
+  }
+});
+
+canvas.addEventListener('mouseup',e=>{
+  if(editorMode==='draw'&&drawStart){
+    const rect=canvas.getBoundingClientRect();
+    const w=canvasToWorld(e.clientX-rect.left,e.clientY-rect.top);
+    const end={x:snapToGrid(w.x),y:snapToGrid(w.y)};
+    const dx=end.x-drawStart.x,dy=end.y-drawStart.y;
+    if(Math.sqrt(dx*dx+dy*dy)>0.2)
+      internalWalls.push({x1:drawStart.x,y1:drawStart.y,x2:end.x,y2:end.y,type:drawMaterial,floor:currentFloor,internal:true});
+    drawStart=null;previewEnd=null;scheduleRender();
+  }
+});
+
+canvas.addEventListener('mouseleave',()=>{
+  document.getElementById('tooltip').style.display='none';
+  previewEnd=null;
+  if(editorMode==='draw')scheduleRender();
+});
+
+// ── AP Drag ───────────────────────────────────────────────────
+const apIcon=document.getElementById('apIcon');
+let dragging=false,dragOffX=0,dragOffY=0;
+
+apIcon.addEventListener('mousedown',e=>{
+  if(!isModelSelected())return;
+  dragging=true;
+  const rect=canvas.getBoundingClientRect();
+  dragOffX=e.clientX-rect.left-apX;dragOffY=e.clientY-rect.top-apY;
+  e.preventDefault();
+});
+document.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  const rect=canvas.getBoundingClientRect();
+  apX=e.clientX-rect.left-dragOffX;apY=e.clientY-rect.top-dragOffY;
+  document.getElementById('tooltip').style.display='none';
+  scheduleRender();
+});
+document.addEventListener('mouseup',()=>{dragging=false;});
+
+apIcon.addEventListener('touchstart',e=>{
+  if(!isModelSelected())return;
+  dragging=true;
+  const rect=canvas.getBoundingClientRect(),t=e.touches[0];
+  dragOffX=t.clientX-rect.left-apX;dragOffY=t.clientY-rect.top-apY;
+  e.preventDefault();
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(!dragging)return;
+  const rect=canvas.getBoundingClientRect(),t=e.touches[0];
+  apX=t.clientX-rect.left-dragOffX;apY=t.clientY-rect.top-dragOffY;
+  scheduleRender();e.preventDefault();
+},{passive:false});
+document.addEventListener('touchend',()=>{dragging=false;});
+
+// ── Config listeners ──────────────────────────────────────────
+['pathLoss','extPenalty','lossWall','lossSlab','lossDoor','lossGlass'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener('input',()=>{
+    if(id==='pathLoss'||id==='lossSlab') el.dataset.manual='true';
+    scheduleRender();
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────
+document.getElementById('pathLoss').value = ITU_N['5'];    // 31
+document.getElementById('lossSlab').value  = ITU_SLAB['5']; // 16
+render();
+</script>
+</body>
+</html>
