@@ -201,27 +201,6 @@ Andares diferentes: Δz = (n × h_andar) − h_AP + h_dispositivo
 
 ---
 
-## 📦 Estrutura do Projeto
-
-```
-wifi-planner/
-├── wifi-heatmap.html   # Aplicação completa (arquivo único)
-├── .gitignore
-└── README.md
-
-# Local apenas (não versionado):
-release/
-├── wifi-heatmap.html        # Última versão estável
-├── wifi-heatmap-v1.0.html   # Heatmap básico
-├── wifi-heatmap-v1.1.html   # Modelo ITU-R P.1238 corrigido
-├── wifi-heatmap-v1.2.html   # Modelo "Selecionar", layout 3 colunas
-├── wifi-heatmap-v1.3.html   # Editor polilinha, snap, undo/redo
-├── wifi-heatmap-v1.4.html   # Modo Heatmap/Desenho, export/import
-└── wifi-heatmap-v1.5.html   # Altura AP + dispositivo (3D)
-```
-
----
-
 ## 📋 Referências Técnicas
 
 - **ITU-R P.1238-7** — *Propagation data and prediction methods for the planning of indoor radiocommunication systems*, Geneva 2012
