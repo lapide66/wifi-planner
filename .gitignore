@@ -3,3 +3,6 @@ release/
 
 # Editor config
 .vscode/
+
+# Workflow instructions — local only
+WORKFLOW.md
