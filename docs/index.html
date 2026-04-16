@@ -177,35 +177,36 @@ h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
 
 /* Draw status bar */
 #drawStatus {
-  margin-top:6px; padding:5px 8px; border-radius:4px; font-size:0.72rem;
-  background:#0a1a30; border:1px solid #00d4ff22; color:#aaa;
-  display:none; line-height:1.5;
+  margin-top:6px; padding:6px 10px; border-radius:4px; font-size:0.72rem;
+  background:#071828; border:1px solid #88ccff44; color:#aaa;
+  display:none; line-height:1.6;
 }
-#drawStatus.active { display:block; border-color:#00d4ff55; }
-#drawStatus .ds-mode { color:#00d4ff; font-weight:bold; }
-#drawStatus .ds-hint { color:#666; font-size:0.68rem; }
+#drawStatus.active { display:block; border-color:#88ccff99; background:#0a1e30; }
+#drawStatus .ds-mode { color:#88ccff; font-weight:bold; font-size:0.75rem; }
+#drawStatus .ds-hint { color:#5a8aaa; font-size:0.67rem; margin-top:2px; }
 
 /* Snap indicator on canvas */
 #snapCursor {
   position:absolute; pointer-events:none; z-index:15;
-  width:12px; height:12px; border:2px solid #00ffaa;
+  width:14px; height:14px; border:2px solid #88ccff;
   border-radius:50%; transform:translate(-50%,-50%);
-  display:none; box-shadow:0 0 6px #00ffaa88;
+  display:none; box-shadow:0 0 8px #88ccff88;
 }
 #coordLabel {
   position:absolute; pointer-events:none; z-index:15;
-  background:rgba(0,0,0,0.75); color:#00d4ff; font-size:0.68rem;
-  padding:2px 5px; border-radius:3px; white-space:nowrap; display:none;
+  background:rgba(7,24,40,0.88); color:#88ccff; font-size:0.68rem;
+  padding:2px 6px; border-radius:3px; white-space:nowrap; display:none;
+  border:1px solid #88ccff44;
 }
 
 /* Undo/redo buttons */
 .undo-row { display:flex; gap:4px; margin-top:4px; }
 .undo-btn {
-  flex:1; padding:4px; background:#0f3460; border:1px solid #00d4ff33;
-  color:#aaa; border-radius:4px; cursor:pointer; font-size:0.75rem; text-align:center;
+  flex:1; padding:4px; background:#071828; border:1px solid #88ccff33;
+  color:#88ccff99; border-radius:4px; cursor:pointer; font-size:0.75rem; text-align:center;
 }
-.undo-btn:hover:not(:disabled) { background:#1a4a80; color:#fff; }
-.undo-btn:disabled { opacity:0.3; cursor:default; }
+.undo-btn:hover:not(:disabled) { background:#0d2a40; color:#88ccff; border-color:#88ccff88; }
+.undo-btn:disabled { opacity:0.25; cursor:default; }
 </style>
 </head>
 <body>
@@ -387,17 +388,17 @@ h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
     </div>
 
     <h3>Atalhos</h3>
-    <div style="font-size:0.68rem;color:#555;line-height:1.8;">
-      <b style="color:#aaa">Desenho:</b><br>
-      Clique → ponto<br>
-      Shift → ortogonal<br>
-      Enter → confirmar<br>
-      Backspace → desfazer ponto<br>
-      Esc → cancelar<br>
-      Ctrl+Z / Ctrl+Y → undo/redo<br>
-      <b style="color:#aaa">Snap:</b><br>
-      🟡 amarelo = ponto existente<br>
-      🟢 verde = grid 0.5m
+    <div style="font-size:0.68rem;color:#5a8aaa;line-height:1.9;background:#071828;border:1px solid #88ccff22;border-radius:4px;padding:7px 9px;margin-top:4px;">
+      <span style="color:#88ccff;font-weight:bold;">Desenho</span><br>
+      <span style="color:#88ccffcc;">Clique</span> → ponto<br>
+      <span style="color:#88ccffcc;">Shift</span> → ortogonal<br>
+      <span style="color:#88ccffcc;">Enter</span> → confirmar<br>
+      <span style="color:#88ccffcc;">Backspace</span> → desfazer ponto<br>
+      <span style="color:#88ccffcc;">Esc</span> → cancelar<br>
+      <span style="color:#88ccffcc;">Ctrl+Z / Ctrl+Y</span> → undo/redo<br>
+      <span style="color:#88ccff;font-weight:bold;">Snap</span><br>
+      <span style="color:#ffdd00;">●</span> amarelo = ponto existente<br>
+      <span style="color:#88ccff;">●</span> azul = grid 0.5m
     </div>
   </div>
 </div>
@@ -717,7 +718,7 @@ function drawDrawingPreview(){
       // Dot on first point
       const fp=worldToCanvas(polyPoints[0].x,polyPoints[0].y);
       ctx.setLineDash([]);
-      ctx.fillStyle='#00ffaa';
+      ctx.fillStyle='#88ccff';
       ctx.beginPath();ctx.arc(fp.x,fp.y,4,0,Math.PI*2);ctx.fill();
       ctx.restore();
     }
@@ -763,7 +764,7 @@ function drawGrid(){
 function drawSnapPoints(){
   // Draw small circles at all wall endpoints for snap feedback
   ctx.save();
-  ctx.strokeStyle='rgba(0,255,170,0.3)';ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(136,204,255,0.25)';ctx.lineWidth=1;
   const pts=getSnapCandidates();
   for(const p of pts){
     const c=worldToCanvas(p.x,p.y);
@@ -997,8 +998,8 @@ canvas.addEventListener('mousemove',e=>{
     const nearPt=snapToNearestPoint(applyOrthoLock(raw.x,raw.y).x, applyOrthoLock(raw.x,raw.y).y);
     snapEl.style.display='block';
     snapEl.style.left=sc.x+'px'; snapEl.style.top=sc.y+'px';
-    snapEl.style.borderColor=nearPt?'#ffdd00':'#00ffaa';
-    snapEl.style.boxShadow=nearPt?'0 0 8px #ffdd0088':'0 0 6px #00ffaa88';
+    snapEl.style.borderColor=nearPt?'#ffdd00':'#88ccff';
+    snapEl.style.boxShadow=nearPt?'0 0 8px #ffdd0088':'0 0 8px #88ccff88';
     coordEl.style.display='block';
     coordEl.style.left=(sc.x+10)+'px'; coordEl.style.top=(sc.y-18)+'px';
     coordEl.textContent=`${snapped.x.toFixed(2)}m, ${snapped.y.toFixed(2)}m`;
