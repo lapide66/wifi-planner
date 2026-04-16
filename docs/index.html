@@ -10,14 +10,14 @@ body {
   background:#1a1a2e; color:#e0e0e0;
   font-family:'Segoe UI',sans-serif;
   display:flex; flex-direction:column; align-items:center;
-  min-height:100vh; padding:12px;
+  min-height:100vh; padding:16px 20px;
 }
-h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
+h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px; }
 
-/* ── Main layout: legend | canvas | tools ── */
+/* ── Main layout: tools | canvas | legend ── */
 #app {
-  display:flex; gap:12px; align-items:flex-start;
-  flex-wrap:wrap; justify-content:center;
+  display:flex; gap:18px; align-items:flex-start;
+  flex-wrap:nowrap; justify-content:center; width:100%;
 }
 
 /* ── Canvas ── */
@@ -81,17 +81,17 @@ h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
 /* ── Shared panel style ── */
 .side-panel {
   background:#16213e; border:1px solid #00d4ff33; border-radius:8px;
-  padding:12px; font-size:0.8rem; flex-shrink:0;
+  padding:14px; font-size:0.82rem; flex-shrink:0;
   max-height:92vh; overflow-y:auto;
 }
-.side-panel h2 { font-size:0.88rem; color:#00d4ff; margin-bottom:8px; border-bottom:1px solid #00d4ff33; padding-bottom:5px; }
-.side-panel h3 { font-size:0.72rem; color:#aaa; margin:10px 0 5px; text-transform:uppercase; letter-spacing:0.5px; }
+.side-panel h2 { font-size:0.95rem; color:#00d4ff; margin-bottom:10px; border-bottom:1px solid #00d4ff33; padding-bottom:6px; }
+.side-panel h3 { font-size:0.75rem; color:#aaa; margin:12px 0 6px; text-transform:uppercase; letter-spacing:0.5px; }
 
 /* ── Left panel (tools) ── */
-#panelLeft { width:262px; order:1; }
+#panelLeft { width:290px; order:1; }
 
 /* ── Right panel (legend) ── */
-#panelRight { width:190px; order:3; }
+#panelRight { width:220px; order:3; }
 
 .param-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; gap:6px; }
 .param-row label { color:#ccc; flex:1; min-width:0; font-size:0.78rem; }
@@ -153,7 +153,7 @@ h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
 .editor-btn.danger { border-color:#ff444444; color:#ff8888; }
 .editor-btn.danger:hover { background:#4a0000; color:#ff4444; }
 
-#wallList { max-height:120px; overflow-y:auto; margin-top:6px; border:1px solid #00d4ff22; border-radius:4px; }
+#wallList { max-height:180px; overflow-y:auto; margin-top:6px; border:1px solid #00d4ff22; border-radius:4px; }
 .wall-item {
   display:flex; align-items:center; gap:4px; padding:3px 6px;
   font-size:0.7rem; border-bottom:1px solid #ffffff11; cursor:pointer;
@@ -207,6 +207,20 @@ h1 { font-size:1.2rem; color:#00d4ff; margin-bottom:10px; letter-spacing:1px; }
 }
 .undo-btn:hover:not(:disabled) { background:#0d2a40; color:#88ccff; border-color:#88ccff88; }
 .undo-btn:disabled { opacity:0.25; cursor:default; }
+
+/* ── 1920×1080 optimizations ── */
+@media (min-height: 900px) {
+  #canvas-container { transform:scale(1.12); transform-origin:top center; margin-bottom:90px; }
+}
+@media (min-height: 1000px) {
+  #canvas-container { transform:scale(1.22); transform-origin:top center; margin-bottom:168px; }
+}
+@media (min-width: 1600px) {
+  #panelLeft  { width:310px; }
+  #panelRight { width:240px; }
+  h1 { font-size:1.5rem; }
+  #app { gap:24px; }
+}
 </style>
 </head>
 <body>

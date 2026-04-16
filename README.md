@@ -2,7 +2,7 @@
 
 > Simulador visual de cobertura Wi-Fi em planta baixa — 100% offline, arquivo HTML único, sem dependências.
 
-![Version](https://img.shields.io/badge/version-1.7-blue)
+![Version](https://img.shields.io/badge/version-1.8-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![HTML5](https://img.shields.io/badge/built%20with-HTML5%20%2F%20Vanilla%20JS-orange)
 ![Offline](https://img.shields.io/badge/offline-ready-brightgreen)
