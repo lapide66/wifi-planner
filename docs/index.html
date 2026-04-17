@@ -176,15 +176,27 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
 #ap-pos { margin-top:8px; border-top:1px solid #00d4ff22; padding-top:6px; font-size:0.73rem; color:#aaa; }
 #ap-pos span { color:#00d4ff; font-weight:bold; }
 
-/* Draw status bar */
+/* Draw status bar — above canvas */
 #drawStatus {
-  margin-top:6px; padding:6px 10px; border-radius:4px; font-size:0.72rem;
+  padding:5px 12px; border-radius:4px; font-size:0.72rem;
   background:#071828; border:1px solid #88ccff44; color:#aaa;
-  display:none; line-height:1.6;
+  display:none; line-height:1.6; margin-bottom:4px; text-align:center;
 }
 #drawStatus.active { display:block; border-color:#88ccff99; background:#0a1e30; }
 #drawStatus .ds-mode { color:#88ccff; font-weight:bold; font-size:0.75rem; }
-#drawStatus .ds-hint { color:#5a8aaa; font-size:0.67rem; margin-top:2px; }
+#drawStatus .ds-hint { color:#5a8aaa; font-size:0.67rem; margin-top:1px; }
+
+/* AP outside building warning */
+#apOutsideWarning {
+  position:absolute; pointer-events:none; z-index:12;
+  background:rgba(180,0,0,0.85); color:#fff; font-size:0.65rem; font-weight:bold;
+  padding:2px 5px; border-radius:3px; white-space:nowrap;
+  transform:translate(-50%, 18px); display:none;
+}
+
+/* Wall editor section hidden in heatmap mode */
+#wallEditorSection { display:none; }
+#wallEditorSection.visible { display:block; }
 
 /* Snap indicator on canvas */
 #snapCursor {
@@ -248,12 +260,23 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
   <button class="view-tab active" data-vm="heatmap" onclick="setViewMode('heatmap')" aria-pressed="true" aria-label="Modo Heatmap">🌡️ Modo Heatmap</button>
   <button class="view-tab" data-vm="draw" onclick="setViewMode('draw')" aria-pressed="false" aria-label="Modo Desenho">✏️ Modo Desenho</button>
 </div>
+<div id="drawStatus">
+  <div class="ds-mode" id="dsMode">—</div>
+  <div class="ds-hint" id="dsHint"></div>
+</div>
 
 <div id="app">
 
   <!-- ══ LEFT: Tools ══ -->
   <div class="side-panel" id="panelLeft" role="region" aria-label="Configurações">
     <h2>⚙️ Configurações</h2>
+
+    <h3>💾 Planta</h3>
+    <div class="io-row">
+      <button class="io-btn export" onclick="exportPlanta()">⬆ Exportar JSON</button>
+      <button class="io-btn" onclick="document.getElementById('importFile').click()">⬇ Importar JSON</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importPlanta(event)">
 
     <h3>Andar Visualizado</h3>
     <div id="floorTabs" role="group" aria-label="Andar visualizado">
@@ -330,6 +353,7 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
       <input type="number" id="lossGlass" value="2" min="0" max="20" step="1">
     </div>
 
+    <div id="wallEditorSection">
     <h3>✏️ Editor de Paredes</h3>
     <div style="margin-bottom:4px;font-size:0.71rem;color:#aaa;">Material:</div>
     <div id="matButtons">
@@ -346,18 +370,8 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
       <button class="undo-btn" id="btnRedo" onclick="doRedo()" disabled title="Ctrl+Y">↪ Refazer</button>
     </div>
     <button class="editor-btn danger" onclick="clearInternalWalls()">⚠️ Limpar Paredes do Andar</button>
-    <div id="drawStatus">
-      <div class="ds-mode" id="dsMode">—</div>
-      <div class="ds-hint" id="dsHint"></div>
-    </div>
     <div id="wallList"></div>
-
-    <h3>💾 Planta</h3>
-    <div class="io-row">
-      <button class="io-btn export" onclick="exportPlanta()">⬆ Exportar JSON</button>
-      <button class="io-btn" onclick="document.getElementById('importFile').click()">⬇ Importar JSON</button>
     </div>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importPlanta(event)">
     <div id="ap-pos" style="margin-top:8px;border-top:1px solid #00d4ff22;padding-top:6px;font-size:0.73rem;color:#aaa;">
       AP: <span id="apPosText">—</span>
     </div>
@@ -373,6 +387,7 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
     </div>
     <div id="snapCursor"></div>
     <div id="coordLabel"></div>
+    <div id="apOutsideWarning">⚠️ Fora do edifício</div>
     <svg id="apIcon" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-label="Access Point" role="img">
       <title>Ícone do Access Point</title>
       <circle cx="14" cy="14" r="13" fill="#0f3460" stroke="#00d4ff" stroke-width="1.5"/>
@@ -495,6 +510,10 @@ function setViewMode(vm){
     t.classList.toggle('active',t.dataset.vm===vm);
     t.setAttribute('aria-pressed', t.dataset.vm===vm);
   });
+  // Show/hide wall editor section
+  const wallSection = document.getElementById('wallEditorSection');
+  if(vm==='draw') wallSection.classList.add('visible');
+  else wallSection.classList.remove('visible');
   // In draw mode, force editor mode to draw; in heatmap mode, reset to none
   if(vm==='draw' && editorMode==='none') setEditorMode('draw');
   if(vm==='heatmap') setEditorMode('none');
@@ -671,6 +690,20 @@ function render(){
   icon.style.left=apX+'px'; icon.style.top=apY+'px';
   icon.style.opacity=(apFloor===currentFloor)?'1':'0.3';
   icon.style.display=(isModelSelected()&&viewMode==='heatmap')?'block':'none';
+
+  // AP outside building warning
+  const outsideWarn = document.getElementById('apOutsideWarning');
+  const apW2 = canvasToWorld(apX, apY);
+  const apIsOutside = isModelSelected() && viewMode==='heatmap' && !isInsideBuilding(apW2.x, apW2.y);
+  if(apIsOutside){
+    outsideWarn.style.display='block';
+    outsideWarn.style.left=apX+'px';
+    outsideWarn.style.top=apY+'px';
+    icon.style.filter='drop-shadow(0 0 6px #ff3333)';
+  } else {
+    outsideWarn.style.display='none';
+    icon.style.filter='drop-shadow(0 0 6px #00d4ff)';
+  }
 
   // Banner — show only when no model selected AND in heatmap mode
   document.getElementById('noApBanner').style.display=
