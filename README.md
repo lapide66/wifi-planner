@@ -2,7 +2,7 @@
 
 > Simulador visual de cobertura Wi-Fi em planta baixa — 100% offline, arquivo HTML único, sem dependências.
 
-![Version](https://img.shields.io/badge/version-1.8-blue)
+![Version](https://img.shields.io/badge/version-1.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![HTML5](https://img.shields.io/badge/built%20with-HTML5%20%2F%20Vanilla%20JS-orange)
 ![Offline](https://img.shields.io/badge/offline-ready-brightgreen)
@@ -59,6 +59,10 @@ O **wifi-planner** permite simular a propagação de sinal Wi-Fi em uma planta b
 - Abas de andar (Térreo / 1º Andar) com badge no canvas
 - Ícone do AP transparente quando em andar diferente do visualizado
 - Banner leve quando nenhum modelo de AP está selecionado
+- Aviso visual (brilho vermelho + badge) quando AP está fora do edifício
+- Status bar de desenho posicionada acima do canvas, próxima ao contexto de uso
+- Editor de paredes oculto automaticamente no Modo Heatmap
+- Botões Exportar/Importar fixos no topo do painel de configurações
 - 100% responsivo e portável — funciona offline como arquivo local
 
 ---
