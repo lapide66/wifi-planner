@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Simulador visual de cobertura Wi-Fi em planta baixa. Posicione o AP, edite paredes e visualize o heatmap de sinal em tempo real. 100% offline.">
 <title>Wi-Fi Heatmap - Planta Baixa</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -208,6 +209,21 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
 .undo-btn:hover:not(:disabled) { background:#0d2a40; color:#88ccff; border-color:#88ccff88; }
 .undo-btn:disabled { opacity:0.25; cursor:default; }
 
+/* ── Focus styles for keyboard navigation ── */
+.view-tab:focus-visible,
+.floor-tab:focus-visible,
+.freq-tab:focus-visible,
+.wall-material-btn:focus-visible,
+.editor-btn:focus-visible,
+.undo-btn:focus-visible,
+.io-btn:focus-visible,
+.full-select:focus-visible,
+.param-row input:focus-visible,
+.param-row select:focus-visible {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
 /* ── 1920×1080 optimizations ── */
 @media (min-height: 900px) {
   #canvas-container { transform:scale(1.12); transform-origin:top center; margin-bottom:90px; }
@@ -224,24 +240,25 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
 </style>
 </head>
 <body>
-<h1>📡 Wi-Fi Signal Heatmap — Planta Baixa</h1>
+<noscript><div style="padding:20px;text-align:center;color:#ff8888;font-family:sans-serif;">JavaScript é necessário para usar o Wi-Fi Heatmap.</div></noscript>
+<h1><span aria-hidden="true">📡</span> Wi-Fi Signal Heatmap — Planta Baixa</h1>
 
 <!-- View mode tabs above canvas -->
-<div id="viewModeTabs">
-  <div class="view-tab active" data-vm="heatmap" onclick="setViewMode('heatmap')">🌡️ Modo Heatmap</div>
-  <div class="view-tab" data-vm="draw" onclick="setViewMode('draw')">✏️ Modo Desenho</div>
+<div id="viewModeTabs" role="group" aria-label="Modo de visualização">
+  <button class="view-tab active" data-vm="heatmap" onclick="setViewMode('heatmap')" aria-pressed="true" aria-label="Modo Heatmap">🌡️ Modo Heatmap</button>
+  <button class="view-tab" data-vm="draw" onclick="setViewMode('draw')" aria-pressed="false" aria-label="Modo Desenho">✏️ Modo Desenho</button>
 </div>
 
 <div id="app">
 
   <!-- ══ LEFT: Tools ══ -->
-  <div class="side-panel" id="panelLeft">
+  <div class="side-panel" id="panelLeft" role="region" aria-label="Configurações">
     <h2>⚙️ Configurações</h2>
 
     <h3>Andar Visualizado</h3>
-    <div id="floorTabs">
-      <div class="floor-tab active" data-floor="0" onclick="setFloor(0)">🏠 Térreo</div>
-      <div class="floor-tab" data-floor="1" onclick="setFloor(1)">🏢 1º Andar</div>
+    <div id="floorTabs" role="group" aria-label="Andar visualizado">
+      <button class="floor-tab active" data-floor="0" onclick="setFloor(0)" aria-pressed="true" aria-label="Visualizar Térreo">🏠 Térreo</button>
+      <button class="floor-tab" data-floor="1" onclick="setFloor(1)" aria-pressed="false" aria-label="Visualizar 1º Andar">🏢 1º Andar</button>
     </div>
 
     <h3>Configuração do AP</h3>
@@ -259,67 +276,67 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
     <div id="apInfoBox"></div>
 
     <div style="margin-bottom:4px;font-size:0.72rem;color:#aaa;">Frequência:</div>
-    <div id="freqTabs">
-      <div class="freq-tab active" data-freq="5" onclick="setFreq('5')">📶 5 GHz</div>
-      <div class="freq-tab" data-freq="2.4" onclick="setFreq('2.4')">📡 2.4 GHz</div>
+    <div id="freqTabs" role="group" aria-label="Frequência do AP">
+      <button class="freq-tab active" data-freq="5" onclick="setFreq('5')" aria-pressed="true" aria-label="Frequência 5 GHz">📶 5 GHz</button>
+      <button class="freq-tab" data-freq="2.4" onclick="setFreq('2.4')" aria-pressed="false" aria-label="Frequência 2.4 GHz">📡 2.4 GHz</button>
     </div>
 
     <div class="param-row">
-      <label>Potência (dBm)</label>
+      <label for="apPower">Potência (dBm)</label>
       <input type="number" id="apPower" value="20" min="0" max="36" step="1" oninput="onPowerManualEdit()">
     </div>
     <div class="param-row">
-      <label>Andar do AP</label>
+      <label for="apFloorSelect">Andar do AP</label>
       <select id="apFloorSelect" onchange="apFloor=parseInt(this.value);scheduleRender()">
         <option value="0">Térreo</option>
         <option value="1">1º Andar</option>
       </select>
     </div>
     <div class="param-row">
-      <label title="Altura de instalação do AP. Teto padrão: 2.8m">Altura do AP (m)</label>
+      <label for="apHeight" title="Altura de instalação do AP. Teto padrão: 2.8m">Altura do AP (m)</label>
       <input type="number" id="apHeight" value="2.8" min="0.5" max="5" step="0.1">
     </div>
     <div class="param-row">
-      <label title="Altura do dispositivo receptor. Mesa: 1.0m, em pé: 1.5m">Altura dispositivo (m)</label>
+      <label for="devHeight" title="Altura do dispositivo receptor. Mesa: 1.0m, em pé: 1.5m">Altura dispositivo (m)</label>
       <input type="number" id="devHeight" value="1.0" min="0.1" max="3" step="0.1">
     </div>
 
     <h3>Propagação (ITU-R P.1238)</h3>
     <div class="param-row">
-      <label title="ITU-R P.1238 Tab.1 — Escritório: 2.4GHz=30, 5GHz=31 | Residencial: 2.4GHz=28 | Corredor: ~33">Expoente N <span style="color:#555;font-size:0.67rem">(Tab.1)</span></label>
+      <label for="pathLoss" title="ITU-R P.1238 Tab.1 — Escritório: 2.4GHz=30, 5GHz=31 | Residencial: 2.4GHz=28 | Corredor: ~33">Expoente N <span style="color:#555;font-size:0.67rem">(Tab.1)</span></label>
       <input type="number" id="pathLoss" value="31" min="15" max="50" step="1">
     </div>
     <div class="param-row">
-      <label title="Perda extra quando AP está fora do edifício. Típico: 10–15 dB.">Penalidade externa <span style="color:#555;font-size:0.67rem">(dB)</span></label>
+      <label for="extPenalty" title="Perda extra quando AP está fora do edifício. Típico: 10–15 dB.">Penalidade externa <span style="color:#555;font-size:0.67rem">(dB)</span></label>
       <input type="number" id="extPenalty" value="12" min="0" max="30" step="1">
     </div>
 
     <h3>Atenuação de Materiais</h3>
     <div style="font-size:0.67rem;color:#555;margin-bottom:5px;">NIST IR 6055 / CWNA — médias 2.4/5 GHz</div>
     <div class="param-row">
-      <label title="Tijolo ~15cm: 6–12 dB (2.4G) / 15–18 dB (5G). NIST IR 6055, CWNA.">🧱 Tijolo (dB)</label>
+      <label for="lossWall" title="Tijolo ~15cm: 6–12 dB (2.4G) / 15–18 dB (5G). NIST IR 6055, CWNA.">🧱 Tijolo (dB)</label>
       <input type="number" id="lossWall" value="10" min="0" max="30" step="1">
     </div>
     <div class="param-row">
-      <label title="ITU-R P.1238 Tab.2: 15 dB (2.4G) / 16 dB (5G) por andar. Concreto 102mm: 15–22 dB (NIST).">🏗️ Laje Concreto (dB)</label>
+      <label for="lossSlab" title="ITU-R P.1238 Tab.2: 15 dB (2.4G) / 16 dB (5G) por andar. Concreto 102mm: 15–22 dB (NIST).">🏗️ Laje Concreto (dB)</label>
       <input type="number" id="lossSlab" value="16" min="0" max="40" step="1">
     </div>
     <div class="param-row">
-      <label title="Madeira maciça 38mm: 3 dB (NIST). CWNA: 3–6 dB.">🚪 Porta Madeira (dB)</label>
+      <label for="lossDoor" title="Madeira maciça 38mm: 3 dB (NIST). CWNA: 3–6 dB.">🚪 Porta Madeira (dB)</label>
       <input type="number" id="lossDoor" value="4" min="0" max="20" step="1">
     </div>
     <div class="param-row">
-      <label title="Vidro 6mm: ~1 dB (NIST IR 6055). CWNA não-tintado: 3 dB.">🪟 Vidro Comum (dB)</label>
+      <label for="lossGlass" title="Vidro 6mm: ~1 dB (NIST IR 6055). CWNA não-tintado: 3 dB.">🪟 Vidro Comum (dB)</label>
       <input type="number" id="lossGlass" value="2" min="0" max="20" step="1">
     </div>
 
     <h3>✏️ Editor de Paredes</h3>
     <div style="margin-bottom:4px;font-size:0.71rem;color:#aaa;">Material:</div>
     <div id="matButtons">
-      <span class="wall-material-btn mat-brick selected" data-mat="brick" onclick="selectMat('brick')">🧱 Tijolo</span>
-      <span class="wall-material-btn mat-slab"  data-mat="slab"  onclick="selectMat('slab')">🏗️ Laje</span>
-      <span class="wall-material-btn mat-door"  data-mat="door"  onclick="selectMat('door')">🚪 Porta</span>
-      <span class="wall-material-btn mat-glass" data-mat="glass" onclick="selectMat('glass')">🪟 Vidro</span>
+      <button type="button" class="wall-material-btn mat-brick selected" data-mat="brick" onclick="selectMat('brick')">🧱 Tijolo</button>
+      <button type="button" class="wall-material-btn mat-slab"  data-mat="slab"  onclick="selectMat('slab')">🏗️ Laje</button>
+      <button type="button" class="wall-material-btn mat-door"  data-mat="door"  onclick="selectMat('door')">🚪 Porta</button>
+      <button type="button" class="wall-material-btn mat-glass" data-mat="glass" onclick="selectMat('glass')">🪟 Vidro</button>
     </div>
     <button class="editor-btn" id="btnDraw"  onclick="setEditorMode('draw')">✏️ Desenhar Parede</button>
     <button class="editor-btn danger" id="btnErase" onclick="setEditorMode('erase')">🗑️ Apagar (clique na parede)</button>
@@ -348,7 +365,7 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
 
   <!-- ══ CENTER: Canvas ══ -->
   <div id="canvas-container">
-    <canvas id="heatmapCanvas"></canvas>
+    <canvas id="heatmapCanvas" role="img" aria-label="Mapa de calor de cobertura Wi-Fi na planta baixa"></canvas>
     <div id="floorBadge">Térreo</div>
     <div id="noApBanner" style="display:none">
       <span class="msg">📡 Selecione um Modelo de AP</span>
@@ -356,7 +373,8 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
     </div>
     <div id="snapCursor"></div>
     <div id="coordLabel"></div>
-    <svg id="apIcon" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+    <svg id="apIcon" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-label="Access Point" role="img">
+      <title>Ícone do Access Point</title>
       <circle cx="14" cy="14" r="13" fill="#0f3460" stroke="#00d4ff" stroke-width="1.5"/>
       <path d="M7 18 Q14 10 21 18" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
       <path d="M9.5 20.5 Q14 14 18.5 20.5" fill="none" stroke="#00aaff" stroke-width="2" stroke-linecap="round"/>
@@ -365,7 +383,7 @@ h1 { font-size:1.35rem; color:#00d4ff; margin-bottom:12px; letter-spacing:1.5px;
   </div>
 
   <!-- ══ RIGHT: Legend ══ -->
-  <div class="side-panel" id="panelRight">
+  <div class="side-panel" id="panelRight" role="region" aria-label="Legenda">
     <h2>📊 Legenda</h2>
 
     <div class="legend-gradient"></div>
@@ -473,7 +491,10 @@ function isModelSelected() { return currentModel !== 'select'; }
 // ── View mode ─────────────────────────────────────────────────
 function setViewMode(vm){
   viewMode = vm;
-  document.querySelectorAll('.view-tab').forEach(t=>t.classList.toggle('active',t.dataset.vm===vm));
+  document.querySelectorAll('.view-tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.vm===vm);
+    t.setAttribute('aria-pressed', t.dataset.vm===vm);
+  });
   // In draw mode, force editor mode to draw; in heatmap mode, reset to none
   if(vm==='draw' && editorMode==='none') setEditorMode('draw');
   if(vm==='heatmap') setEditorMode('none');
@@ -801,7 +822,10 @@ function onModelChange(){
 
 function setFreq(f){
   currentFreq=f;
-  document.querySelectorAll('.freq-tab').forEach(t=>t.classList.toggle('active',t.dataset.freq===f));
+  document.querySelectorAll('.freq-tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.freq===f);
+    t.setAttribute('aria-pressed', t.dataset.freq===f);
+  });
   powerManualOverride=false;
   applyModelPower();
   const nEl=document.getElementById('pathLoss');
@@ -832,7 +856,10 @@ function updateApInfoBox(){
 // ── Floor ─────────────────────────────────────────────────────
 function setFloor(f){
   currentFloor=f;
-  document.querySelectorAll('.floor-tab').forEach(t=>t.classList.toggle('active',parseInt(t.dataset.floor)===f));
+  document.querySelectorAll('.floor-tab').forEach(t=>{
+    t.classList.toggle('active',parseInt(t.dataset.floor)===f);
+    t.setAttribute('aria-pressed', parseInt(t.dataset.floor)===f);
+  });
   scheduleRender();
 }
 
@@ -959,7 +986,6 @@ function deleteWall(idx){
   scheduleRender();
 }
 function selectWall(idx){selectedWallIdx=(selectedWallIdx===idx)?-1:idx;scheduleRender();}
-function snapToGrid(v){return Math.round(v*2)/2;}
 
 function updateWallList(){
   const list=document.getElementById('wallList');
