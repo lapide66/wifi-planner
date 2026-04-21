@@ -1,0 +1,6 @@
+{
+  "name": "WiFi Planner",
+  "description": "Visual Wi-Fi coverage simulator with real-time heatmap, wall editor, and ITU-R P.1238 propagation model.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
