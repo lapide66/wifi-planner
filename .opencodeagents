@@ -1,0 +1,17 @@
+# Instruções personalizadas para wifi-planner
+
+## Release Manager
+
+### Atualização do README
+- **SEMPRE** verificar se o README.md precisa de atualização a CADA commit
+- Não apenas em releases formais (v1.0.0, etc.), mas em qualquer mudança significativa
+- Atualizar badge de versão no topo do README quando houver mudança de versão
+- Adicionar entrada no changelog/histórico de mudanças para cada mudança
+
+### Convenções de Commit
+- Usar conventional commits: feat, fix, refactor, chore, docs, etc.
+- Descrições devem ser claras para facilitar geração automática de changelog
+
+### GitHub Pages
+- Sempre verificar se há necessidade de atualizar configurações de deploy
+- Garantir que o workflow de deploy (.github/workflows/) esteja atualizado
